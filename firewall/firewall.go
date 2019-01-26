@@ -32,8 +32,8 @@ var (
 	ErrCouldNotReadSrc = errors.New("could not get source IP from http request")
 )
 
-// NewFirewall is the no-argument constructor for the firewall object
-func NewFirewall() *Firewall {
+// New is the no-argument constructor for the firewall object
+func New() *Firewall {
 	return &Firewall{
 		Rules: Rules{
 			FailOpen: false,
@@ -41,12 +41,12 @@ func NewFirewall() *Firewall {
 	}
 }
 
-/*New is the constructor for the firewall object given a rule map and two boleans:
+/*NewFirewall is the constructor for the firewall object given a rule map and two boleans:
 * failOpen: - false (default) to drop all requests for paths with an undefined trusted netblock
 *           - true to allow all traffic to such paths
 * log: true to log all dropped requests
  */
-func New(rules map[string][]net.IPNet, failOpen, log bool) *Firewall {
+func NewFirewall(rules map[string][]net.IPNet, failOpen, log bool) *Firewall {
 	return &Firewall{
 		Rules: Rules{
 			PathToNetblocks: rules,
@@ -76,7 +76,7 @@ func (fw *Firewall) AddPathRule(path string, networks []string) error {
 }
 
 // Wrap the firewall around an HTTP handler function
-func (fw *Firewall) Wrap(handler http.Handler) http.Handler {
+func (fw *Firewall) Wrap(h func(http.ResponseWriter, *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// extract IP from http.Request
 		srcIP := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
@@ -88,7 +88,7 @@ func (fw *Firewall) Wrap(handler http.Handler) http.Handler {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			return
 		}
-		handler.ServeHTTP(w, r)
+		h(w, r)
 	})
 }
 
